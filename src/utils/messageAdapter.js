@@ -13,211 +13,291 @@ import { enforceDefaultCommandPermissions } from './permissionGuard.js';
 export { buildPrefixUsage };
 
 function getCommandJson(commandData) {
-  return commandData?.toJSON ? commandData.toJSON() : commandData;
+return commandData?.toJSON ? commandData.toJSON() : commandData;
 }
 
 export function resolveSlashAccessKey(interaction) {
-  const subcommandGroup = interaction.options.getSubcommandGroup(false);
-  const subcommand = interaction.options.getSubcommand(false);
+const subcommandGroup = interaction.options.getSubcommandGroup(false);
+const subcommand = interaction.options.getSubcommand(false);
 
-  if (subcommandGroup && subcommand) {
-    return `${interaction.commandName} ${subcommandGroup} ${subcommand}`;
-  }
+if (subcommandGroup && subcommand) {
+return `${interaction.commandName} ${subcommandGroup} ${subcommand}`;
+}
 
-  if (subcommand) {
-    return `${interaction.commandName} ${subcommand}`;
-  }
+if (subcommand) {
+return `${interaction.commandName} ${subcommand}`;
+}
 
-  return interaction.commandName;
+return interaction.commandName;
 }
 
 export function resolvePrefixAccessKey(commandData, args) {
-  const options = mapArgumentsToOptions(args, commandData);
-  const subcommand = options.getSubcommand();
-  const subcommandGroup = options.getSubcommandGroup();
-  const commandName = getCommandJson(commandData)?.name;
+const options = mapArgumentsToOptions(args, commandData);
+const subcommand = options.getSubcommand();
+const subcommandGroup = options.getSubcommandGroup();
+const commandName = getCommandJson(commandData)?.name;
 
-  if (!commandName) {
-    return null;
-  }
+if (!commandName) {
+return null;
+}
 
-  if (subcommandGroup && subcommand) {
-    return `${commandName} ${subcommandGroup} ${subcommand}`;
-  }
+if (subcommandGroup && subcommand) {
+return `${commandName} ${subcommandGroup} ${subcommand}`;
+}
 
-  if (subcommand) {
-    return `${commandName} ${subcommand}`;
-  }
+if (subcommand) {
+return `${commandName} ${subcommand}`;
+}
 
-  return commandName;
+return commandName;
 }
 
 export function createMockInteraction(message, commandData, args) {
-  const options = mapArgumentsToOptions(args, commandData);
-  const commandStartTime = Date.now();
+const options = mapArgumentsToOptions(args, commandData);
+const commandStartTime = Date.now();
 
-  const mockInteraction = {
-    user: message.author,
-    member: message.member,
-    get memberPermissions() {
-      return message.member?.permissions ?? null;
-    },
+const mockInteraction = {
+user: message.author,
+member: message.member,
 
-    channel: message.channel,
-    guild: message.guild,
-    guildId: message.guild?.id,
+```
+get memberPermissions() {
+  return message.member?.permissions ?? null;
+},
 
-    commandName: commandData?.name || null,
-    commandId: message.id,
-    id: message.id,
+channel: message.channel,
+guild: message.guild,
+guildId: message.guild?.id,
 
-    options: {
-      get: (name) => options.get(name),
-      getString: (name) => options.getString(name),
-      getUser: (name) => {
-        const userId = options.getUser(name);
-        if (!userId || !message.guild) return null;
+commandName: commandData?.name || null,
+commandId: message.id,
+id: message.id,
 
-        const mentionMatch = userId.match(/<@!?(\d+)>/);
-        const id = mentionMatch ? mentionMatch[1] : userId;
+options: {
+  get: (name) => options.get(name),
 
-        const cachedMember = message.guild.members.cache.get(id);
-        if (cachedMember) {
-          return cachedMember.user;
-        }
+  getString: (name) => options.getString(name),
 
-        return {
-          id,
-          username: 'Unknown',
-          bot: false,
-          tag: 'Unknown#0000',
-        };
-      },
-      getMember: (name) => {
-        const userId = options.getUser(name);
-        if (!userId || !message.guild) return null;
+  getUser: (name) => {
+    const userId = options.getUser(name);
 
-        const mentionMatch = userId.match(/<@!?(\d+)>/);
-        const id = mentionMatch ? mentionMatch[1] : userId;
+    if (!userId || !message.guild) {
+      return null;
+    }
 
-        return message.guild.members.cache.get(id) ?? null;
-      },
-      getChannel: (name) => {
-        const channelId = options.getString(name);
-        if (!channelId || !message.guild) return null;
+    const mentionMatch = String(userId).match(/<@!?(\d+)>/);
+    const id = mentionMatch ? mentionMatch[1] : String(userId);
 
-        const mentionMatch = channelId.match(/<#(\d+)>/);
-        const id = mentionMatch ? mentionMatch[1] : channelId;
+    // Use the user directly from the Discord message mention.
+    const mentionedUser = message.mentions.users.get(id);
 
-        return message.guild.channels.fetch(id).catch(() => null);
-      },
-      getRole: (name) => {
-        const roleId = options.getString(name);
-        if (!roleId || !message.guild) return null;
+    if (mentionedUser) {
+      return mentionedUser;
+    }
 
-        const mentionMatch = roleId.match(/<@&(\d+)>/);
-        const id = mentionMatch ? mentionMatch[1] : roleId;
+    // If the user was not found in the mention collection,
+    // check the server member cache.
+    const cachedMember = message.guild.members.cache.get(id);
 
-        return message.guild.roles.fetch(id).catch(() => null);
-      },
-      getInteger: (name) => options.getInteger(name),
-      getBoolean: (name) => options.getBoolean(name),
-      getSubcommand: () => options.getSubcommand(),
-      getSubcommandGroup: () => options.getSubcommandGroup(),
-      validateRequired: () => options.validateRequired(),
-      _hoistedOptions: args.map((arg, index) => ({
-        name: commandData?.options?.[index]?.name || `arg${index}`,
-        value: arg,
-        type: 3,
-      })),
-    },
+    if (cachedMember) {
+      return cachedMember.user;
+    }
 
-    createdTimestamp: message.createdTimestamp,
-    createdAt: message.createdAt,
-    _commandStartTime: commandStartTime,
-    _isPrefixCommand: true,
+    // Do not create a fake "Unknown" user.
+    return null;
+  },
 
-    client: message.client,
+  getMember: (name) => {
+    const userId = options.getUser(name);
 
-    deferred: false,
-    replied: false,
-    _replyMessage: null,
+    if (!userId || !message.guild) {
+      return null;
+    }
 
-    deleteReply: async () => {
-      const replyMessage = coordinator.getReplyMessage();
-      if (replyMessage?.deletable) {
-        return replyMessage.delete();
-      }
-      if (message.deletable) {
-        return message.delete();
-      }
-    },
+    const mentionMatch = String(userId).match(/<@!?(\d+)>/);
+    const id = mentionMatch ? mentionMatch[1] : String(userId);
 
-    fetchReply: async () => coordinator.getReplyMessage() || message,
+    // Use the member directly from the Discord message mention.
+    const mentionedMember = message.mentions.members.get(id);
 
-    ephemeral: false,
-    webhook: null,
-  };
+    if (mentionedMember) {
+      return mentionedMember;
+    }
 
-  const coordinator = ResponseCoordinator.attach(mockInteraction, { message });
+    // Otherwise, check the server member cache.
+    return message.guild.members.cache.get(id) ?? null;
+  },
 
-  mockInteraction.reply = (payload) => coordinator.respond(payload);
-  mockInteraction.editReply = (payload) => coordinator.edit(payload);
-  mockInteraction.followUp = (payload) => coordinator.followUp(payload);
-  mockInteraction.deferReply = () => coordinator.deferLocal();
+  getChannel: (name) => {
+    const channelId = options.getString(name);
 
-  InteractionHelper.patchInteractionResponses(mockInteraction);
+    if (!channelId || !message.guild) {
+      return null;
+    }
 
-  return mockInteraction;
+    const mentionMatch = String(channelId).match(/<#(\d+)>/);
+    const id = mentionMatch ? mentionMatch[1] : String(channelId);
+
+    return message.guild.channels.fetch(id).catch(() => null);
+  },
+
+  getRole: (name) => {
+    const roleId = options.getString(name);
+
+    if (!roleId || !message.guild) {
+      return null;
+    }
+
+    const mentionMatch = String(roleId).match(/<@&(\d+)>/);
+    const id = mentionMatch ? mentionMatch[1] : String(roleId);
+
+    return message.guild.roles.fetch(id).catch(() => null);
+  },
+
+  getInteger: (name) => options.getInteger(name),
+  getBoolean: (name) => options.getBoolean(name),
+  getSubcommand: () => options.getSubcommand(),
+  getSubcommandGroup: () => options.getSubcommandGroup(),
+  validateRequired: () => options.validateRequired(),
+
+  _hoistedOptions: args.map((arg, index) => ({
+    name: commandData?.options?.[index]?.name || `arg${index}`,
+    value: arg,
+    type: 3,
+  })),
+},
+
+createdTimestamp: message.createdTimestamp,
+createdAt: message.createdAt,
+_commandStartTime: commandStartTime,
+_isPrefixCommand: true,
+
+client: message.client,
+
+deferred: false,
+replied: false,
+_replyMessage: null,
+
+deleteReply: async () => {
+  const replyMessage = coordinator.getReplyMessage();
+
+  if (replyMessage?.deletable) {
+    return replyMessage.delete();
+  }
+
+  if (message.deletable) {
+    return message.delete();
+  }
+},
+
+fetchReply: async () => coordinator.getReplyMessage() || message,
+
+ephemeral: false,
+webhook: null,
+```
+
+};
+
+const coordinator = ResponseCoordinator.attach(mockInteraction, {
+message,
+});
+
+mockInteraction.reply = (payload) => coordinator.respond(payload);
+mockInteraction.editReply = (payload) => coordinator.edit(payload);
+mockInteraction.followUp = (payload) => coordinator.followUp(payload);
+mockInteraction.deferReply = () => coordinator.deferLocal();
+
+InteractionHelper.patchInteractionResponses(mockInteraction);
+
+return mockInteraction;
 }
 
 export function supportsPrefixExecution(command) {
-  if (command.prefixOnly === false || command.slashOnly === true) {
-    return false;
-  }
-
-  const commandName = command.data?.name?.toLowerCase();
-  if (commandName && SLASH_ONLY_COMMANDS.has(commandName)) {
-    return false;
-  }
-
-  if (command.prefixExecute) {
-    return true;
-  }
-
-  return !!command.execute;
+if (command.prefixOnly === false || command.slashOnly === true) {
+return false;
 }
 
-export async function executePrefixCommand(command, message, args, client, prefixOverride = null, guildConfig = null) {
-  const mockInteraction = createMockInteraction(message, command.data, args);
-  const coordinator = mockInteraction._responseCoordinator;
-  const prefix = prefixOverride || getCommandPrefix();
+const commandName = command.data?.name?.toLowerCase();
 
-  try {
-    const permissionAllowed = await enforceDefaultCommandPermissions(mockInteraction, command, {
-      source: 'messageAdapter.executePrefixCommand',
-      guildConfig,
-    });
-    if (!permissionAllowed) {
-      return;
-    }
+if (commandName && SLASH_ONLY_COMMANDS.has(commandName)) {
+return false;
+}
 
-    const validation = mockInteraction.options.validateRequired();
-    if (!validation.valid) {
-      await coordinator.respondUsageFromCommand(prefix, command.data, validation);
-      return;
-    }
+if (command.prefixExecute) {
+return true;
+}
 
-    if (command.prefixExecute) {
-      await command.prefixExecute(mockInteraction, guildConfig, client);
-    } else {
-      await command.execute(mockInteraction, guildConfig, client);
-    }
-  } catch (error) {
-    await handleInteractionError(mockInteraction, error, {
-      type: 'prefix_command',
-      command: command.data?.name,
-      source: 'messageAdapter.executePrefixCommand',
-    });
-  }
+return !!command.execute;
+}
+
+export async function executePrefixCommand(
+command,
+message,
+args,
+client,
+prefixOverride = null,
+guildConfig = null,
+) {
+const mockInteraction = createMockInteraction(
+message,
+command.data,
+args,
+);
+
+const coordinator = mockInteraction._responseCoordinator;
+const prefix = prefixOverride || getCommandPrefix();
+
+try {
+const permissionAllowed = await enforceDefaultCommandPermissions(
+mockInteraction,
+command,
+{
+source: 'messageAdapter.executePrefixCommand',
+guildConfig,
+},
+);
+
+```
+if (!permissionAllowed) {
+  return;
+}
+
+const validation = mockInteraction.options.validateRequired();
+
+if (!validation.valid) {
+  await coordinator.respondUsageFromCommand(
+    prefix,
+    command.data,
+    validation,
+  );
+
+  return;
+}
+
+if (command.prefixExecute) {
+  await command.prefixExecute(
+    mockInteraction,
+    guildConfig,
+    client,
+  );
+} else {
+  await command.execute(
+    mockInteraction,
+    guildConfig,
+    client,
+  );
+}
+```
+
+} catch (error) {
+await handleInteractionError(
+mockInteraction,
+error,
+{
+type: 'prefix_command',
+command: command.data?.name,
+source: 'messageAdapter.executePrefixCommand',
+},
+);
+}
 }
