@@ -1,9 +1,7 @@
 // messageAdapter.js
 
 import { mapArgumentsToOptions } from './prefixParser.js';
-import { createEmbed } from './embeds.js';
 import { handleInteractionError } from './errorHandler.js';
-import { logger } from './logger.js';
 import { InteractionHelper } from './interactionHelper.js';
 import { SLASH_ONLY_COMMANDS } from '../config/commands/prefixRestrictions.js';
 import { getCommandPrefix } from '../config/bot.js';
@@ -60,7 +58,7 @@ const mockInteraction = {
 user: message.author,
 member: message.member,
 
-```
+  
 get memberPermissions() {
   return message.member?.permissions ?? null;
 },
@@ -88,22 +86,18 @@ options: {
     const mentionMatch = String(userId).match(/<@!?(\d+)>/);
     const id = mentionMatch ? mentionMatch[1] : String(userId);
 
-    // Use the user directly from the Discord message mention.
     const mentionedUser = message.mentions.users.get(id);
 
     if (mentionedUser) {
       return mentionedUser;
     }
 
-    // If the user was not found in the mention collection,
-    // check the server member cache.
     const cachedMember = message.guild.members.cache.get(id);
 
     if (cachedMember) {
       return cachedMember.user;
     }
 
-    // Do not create a fake "Unknown" user.
     return null;
   },
 
@@ -117,14 +111,12 @@ options: {
     const mentionMatch = String(userId).match(/<@!?(\d+)>/);
     const id = mentionMatch ? mentionMatch[1] : String(userId);
 
-    // Use the member directly from the Discord message mention.
     const mentionedMember = message.mentions.members.get(id);
 
     if (mentionedMember) {
       return mentionedMember;
     }
 
-    // Otherwise, check the server member cache.
     return message.guild.members.cache.get(id) ?? null;
   },
 
@@ -188,6 +180,8 @@ deleteReply: async () => {
   if (message.deletable) {
     return message.delete();
   }
+
+  return null;
 },
 
 fetchReply: async () => coordinator.getReplyMessage() || message,
@@ -257,7 +251,7 @@ guildConfig,
 },
 );
 
-```
+
 if (!permissionAllowed) {
   return;
 }
@@ -287,7 +281,7 @@ if (command.prefixExecute) {
     client,
   );
 }
-```
+
 
 } catch (error) {
 await handleInteractionError(
