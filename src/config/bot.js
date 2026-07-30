@@ -77,10 +77,10 @@ export const botConfig = {
     applicationCooldown: 24,
 
     // Auto-delete denied applications after this many days.
-    deleteDeniedAfter: 7,
+    deleteDeniedAfter: 2,
 
     // Auto-delete approved applications after this many days.
-    deleteApprovedAfter: 30,
+    deleteApprovedAfter: 2,
 
     // Role IDs allowed to manage applications.
     managerRoles: [], // Will be populated from environment or database
@@ -183,7 +183,7 @@ export const botConfig = {
 
     // Beg command random payout range.
     begMin: 5,
-    begMax: 50,
+    begMax: 5000,
 
     // Command cooldowns (milliseconds).
     cooldowns: {
